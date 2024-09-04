@@ -1,0 +1,146 @@
+
+image:
+  name: hashicorp/terraform:0.13.5
+  entrypoint:
+    - 'usr/bin/env'
+    - 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+
+stages:
+  - validate-dev
+  - plan-dev
+  - apply-dev
+  - validate-qa
+  - plan-qa
+  - apply-qa
+  - validate-prod
+  - plan-prod
+  - apply-prod 
+
+.dev_rules:
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      changes: 
+        - environments/dev/**/*
+
+.qa_rules:
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      changes: 
+        - environments/qa/**/*
+
+.prod_rules:
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      changes: 
+        - environments/prod/**/*
+
+validate-dev:
+  rules:
+    - !reference [.dev_rules, rules]
+  stage: validate-dev
+  script:
+    - echo "Get credentials"
+    - echo $IAC_SA | base64 -d > /builds/sa.json
+    - cd environments/dev/
+    - terraform init -backend=true -get=true -input=false -backend-config=backend.conf -reconfigure
+    - terraform validate
+
+validate-qa:
+  rules:
+    - !reference [.qa_rules, rules]
+  stage: validate-qa
+  script:
+    - echo "Get credentials"
+    - echo $IAC_SA | base64 -d > /builds/sa.json
+    - cd environments/qa/
+    - terraform init -backend=true -get=true -input=false -backend-config=backend.conf -reconfigure
+    - terraform validate
+
+validate-prod:
+  rules:
+    - !reference [.prod_rules, rules]
+  stage: validate-prod
+  script:
+    - echo "Get credentials"
+    - echo $IAC_SA | base64 -d > /builds/sa.json
+    - cd environments/prod/
+    - terraform init -backend=true -get=true -input=false -backend-config=backend.conf -reconfigure
+    - terraform validate
+
+plan-dev:
+  rules:
+    - !reference [.dev_rules, rules]
+  stage: plan-dev
+  script:
+    - echo "Get credentials"
+    - echo $IAC_SA | base64 -d > /builds/sa.json
+    - cd environments/dev/
+    - terraform init -backend=true -get=true -input=false -backend-config=backend.conf -reconfigure
+    - terraform plan
+  needs:
+    - validate-dev
+
+plan-qa:
+  rules:
+    - !reference [.qa_rules, rules]
+  stage: plan-qa
+  script:
+    - echo "Get credentials"
+    - echo $IAC_SA | base64 -d > /builds/sa.json
+    - cd environments/qa/
+    - terraform init -backend=true -get=true -input=false -backend-config=backend.conf -reconfigure
+    - terraform plan
+  needs:
+    - validate-qa
+
+plan-prod:
+  rules:
+    - !reference [.prod_rules, rules]
+  stage: plan-prod
+  script:
+    - echo "Get credentials"
+    - echo $IAC_SA | base64 -d > /builds/sa.json
+    - cd environments/prod/
+    - terraform init -backend=true -get=true -input=false -backend-config=backend.conf -reconfigure
+    - terraform plan
+  needs:
+    - validate-prod
+
+apply-dev:
+  rules:
+    - !reference [.dev_rules, rules]
+  stage: apply-dev
+  script:
+    - echo "Get credentials"
+    - echo $IAC_SA | base64 -d > /builds/sa.json
+    - cd environments/dev/
+    - terraform init -backend=true -get=true -input=false -backend-config=backend.conf -reconfigure
+    - terraform apply --auto-approve
+  needs:
+    - plan-dev
+
+apply-qa:
+  rules:
+    - !reference [.qa_rules, rules]
+  stage: apply-qa
+  script:
+    - echo "Get credentials"
+    - echo $IAC_SA | base64 -d > /builds/sa.json
+    - cd environments/qa/
+    - terraform init -backend=true -get=true -input=false -backend-config=backend.conf -reconfigure
+    - terraform apply --auto-approve
+  needs:
+    - plan-qa
+
+apply-prod:
+  rules:
+    - !reference [.prod_rules, rules]
+  stage: apply-prod
+  script:
+    - echo "Get credentials"
+    - echo $IAC_SA | base64 -d > /builds/sa.json
+    - cd environments/prod/
+    - terraform init -backend=true -get=true -input=false -backend-config=backend.conf -reconfigure
+    - terraform apply --auto-approve
+  needs:
+    - plan-prod
